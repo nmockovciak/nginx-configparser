@@ -152,6 +152,10 @@ bool NginxConfigParser::Parse(std::istream* config_file, NginxConfig* config) {
   config_stack.push(config);
   TokenType last_token_type = TOKEN_TYPE_START;
   TokenType token_type;
+
+  // keep track of total bracket count
+  int cntBracket = 0;
+
   while (true) {
     std::string token;
     token_type = ParseToken(config_file, &token);
@@ -194,6 +198,9 @@ bool NginxConfigParser::Parse(std::istream* config_file, NginxConfig* config) {
         // Error.
         break;
       }
+
+      cntBracket++;
+
       NginxConfig* const new_config = new NginxConfig;
       config_stack.top()->statements_.back().get()->child_block_.reset(
           new_config);
@@ -203,6 +210,9 @@ bool NginxConfigParser::Parse(std::istream* config_file, NginxConfig* config) {
         // Error.
         break;
       }
+
+      cntBracket--;
+
       config_stack.pop();
     } else if (token_type == TOKEN_TYPE_EOF) {
       if (last_token_type != TOKEN_TYPE_STATEMENT_END &&
@@ -210,7 +220,11 @@ bool NginxConfigParser::Parse(std::istream* config_file, NginxConfig* config) {
         // Error.
         break;
       }
-      return true;
+
+      // if we still have a positive (or negative) bracket count, there is an error
+       if (cntBracket != 0){return false;}
+      else {return true;}
+
     } else {
       // Error. Unknown token.
       break;
